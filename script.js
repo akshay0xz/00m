@@ -1,28 +1,73 @@
-let startX = 0;
-let chatPanel = document.getElementById("chat-panel");
+let currentChatId = null;
 
-// Swipe detect
+// Firebase setup
+import { initializeApp } from "firebase/app";
+import { getDatabase, ref, push, onChildAdded } from "firebase/database";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyB0VwBfmpTy1T2W-2OPFpael7jBCeUQRSE",
+  authDomain: "inspire24-4cc84.firebaseapp.com",
+  databaseURL: "https://inspire24-4cc84-default-rtdb.firebaseio.com",
+  projectId: "inspire24-4cc84",
+  storageBucket: "inspire24-4cc84.firebasestorage.app",
+  messagingSenderId: "1062196864061",
+  appId: "1:1062196864061:web:d60b55044601205f5a3654",
+  measurementId: "G-MBZR5JKKWX"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+// DOM Elements
+const chatContainer = document.getElementById("chat-container");
+const chatBox = document.getElementById("chat-box");
+const inputBox = document.getElementById("chat-input");
+const sendBtn = document.getElementById("send-btn");
+const idPrompt = document.getElementById("id-prompt");
+const enterIdBtn = document.getElementById("enter-id-btn");
+
+// Swipe open
+let touchStartX = 0;
+let touchEndX = 0;
+
 document.body.addEventListener("touchstart", (e) => {
-  startX = e.changedTouches[0].clientX;
+  touchStartX = e.changedTouches[0].screenX;
 });
 
 document.body.addEventListener("touchend", (e) => {
-  let endX = e.changedTouches[0].clientX;
-  if (endX - startX > 100) {
-    chatPanel.style.right = "0";
+  touchEndX = e.changedTouches[0].screenX;
+  if (touchEndX - touchStartX > 100) {
+    idPrompt.style.display = "flex";
   }
 });
 
-document.getElementById("panic").onclick = () => {
-  chatPanel.style.right = "-100%";
-};
-
-function sendMessage() {
-  let msg = document.getElementById("message").value;
-  if (msg.trim()) {
-    let msgBox = document.createElement("div");
-    msgBox.textContent = msg;
-    document.getElementById("chat-box").appendChild(msgBox);
-    document.getElementById("message").value = "";
+enterIdBtn.addEventListener("click", () => {
+  const chatIdInput = document.getElementById("chat-id").value.trim();
+  if (chatIdInput !== "") {
+    currentChatId = chatIdInput;
+    idPrompt.style.display = "none";
+    chatContainer.style.display = "block";
+    loadMessages();
   }
+});
+
+sendBtn.addEventListener("click", () => {
+  const message = inputBox.value.trim();
+  if (message !== "" && currentChatId) {
+    const msgRef = ref(db, "chats/" + currentChatId);
+    push(msgRef, { text: message });
+    inputBox.value = "";
+  }
+});
+
+function loadMessages() {
+  const msgRef = ref(db, "chats/" + currentChatId);
+  chatBox.innerHTML = "";
+  onChildAdded(msgRef, (snapshot) => {
+    const msg = snapshot.val();
+    const p = document.createElement("p");
+    p.textContent = msg.text;
+    chatBox.appendChild(p);
+    chatBox.scrollTop = chatBox.scrollHeight;
+  });
 }
